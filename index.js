@@ -7,7 +7,11 @@ const port = process.env.PORT || 4001;
 
 // middleware
 
-app.use(cors());
+app.use(cors(
+ { origin:"http://localhost:5173",
+  optionsSuccessStatus:200
+ }
+));
 app.use(express.json());
 
 // mongodb
@@ -35,6 +39,17 @@ async function run() {
     await client.connect();
 
 
+app.get('/user/:email',async(req,res)=>{
+  const query = {email:req.params.email}
+  const user = await userCollection.findOne(query)
+  // if(!user){
+  //   return res.send({message:"user not found"})
+  // }
+  res.send(user)
+})
+
+
+
 app.post("/users", async(req,res)=>{
   const user = req.body;
   const query = {email:user.email}
@@ -45,7 +60,6 @@ app.post("/users", async(req,res)=>{
   const result = await userCollection.insertOne(user)
   res.send(result)
 })
-
 
 
 
