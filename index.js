@@ -12,7 +12,7 @@ app.use(express.json());
 
 // token verification
 const verifyJWT = (req, res, next) => {
-  const authorization = req.header.authorization;
+  const authorization = req.headers.authorization;
   if (!authorization) {
     return res.send({ message: "no token" });
   }
@@ -21,9 +21,11 @@ const verifyJWT = (req, res, next) => {
     if (err) {
       return res.send({ message: "Invalid Token" });
     }
-    res.decoded = decoded;
+    req.decoded = decoded;
     next();
-  });
+  }).then((res)=>{
+    
+  })
 };
 
 // verify seller
