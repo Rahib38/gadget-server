@@ -7,12 +7,36 @@ const port = process.env.PORT || 4001;
 
 // middleware
 
-app.use(cors(
- { origin:"http://localhost:5173",
-  optionsSuccessStatus:200
- }
-));
+app.use(cors({ origin: "http://localhost:5173", optionsSuccessStatus: 200 }));
 app.use(express.json());
+
+// token verification
+const verifyJWT = (req, res, next) => {
+  const authorization = req.header.authorization;
+  if (!authorization) {
+    return res.send({ message: "no token" });
+  }
+  const token = authorization.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_KEY_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.send({ message: "Invalid Token" });
+    }
+    res.decoded = decoded;
+    next();
+  });
+};
+
+// verify seller
+
+const verifySeller = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  if (user?.role !== "seller") {
+    return res.send({ message: "forbidden access" });
+  }
+  next();
+};
 
 // mongodb
 
@@ -28,45 +52,39 @@ const client = new MongoClient(uri, {
   },
 });
 
-const userCollection = client.db("gadgetShop").collection("users")
-const productCollection = client.db("gadgetShop").collection("products")
-
-
+const userCollection = client.db("gadgetShop").collection("users");
+const productCollection = client.db("gadgetShop").collection("products");
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    app.get("/user/:email", async (req, res) => {
+      const query = { email: req.params.email };
+      const user = await userCollection.findOne(query);
+      // if(!user){
+      //   return res.send({message:"user not found"})
+      // }
+      res.send(user);
+    });
 
-app.get('/user/:email',async(req,res)=>{
-  const query = {email:req.params.email}
-  const user = await userCollection.findOne(query)
-  // if(!user){
-  //   return res.send({message:"user not found"})
-  // }
-  res.send(user)
-})
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existUser = await userCollection.findOne(query);
+      if (existUser) {
+        return res.send({ message: "user already exist" });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
 
-
-
-app.post("/users", async(req,res)=>{
-  const user = req.body;
-  const query = {email:user.email}
-  const existUser = await userCollection.findOne(query)
-  if(existUser){
-    return res.send({message:"user already exist"})
-  }
-  const result = await userCollection.insertOne(user)
-  res.send(result)
-})
-
-
-
-
-
-
-
+    app.post("/add-products", verifyJWT, verifySeller, async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
