@@ -17,15 +17,15 @@ const verifyJWT = (req, res, next) => {
     return res.send({ message: "no token" });
   }
   const token = authorization.split(" ")[1];
-  jwt.verify(token, process.env.ACCESS_KEY_TOKEN, (err, decoded) => {
-    if (err) {
-      return res.send({ message: "Invalid Token" });
-    }
-    req.decoded = decoded;
-    next();
-  }).then((res)=>{
-    
-  })
+  jwt
+    .verify(token, process.env.ACCESS_KEY_TOKEN, (err, decoded) => {
+      if (err) {
+        return res.send({ message: "Invalid Token" });
+      }
+      req.decoded = decoded;
+      next();
+    })
+    .then((res) => {});
 };
 
 // verify seller
@@ -86,6 +86,23 @@ async function run() {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
+    });
+
+    app.get("/all-products", async (req, res) => {
+      const { title, sort, category, brand } = req.query;
+      const query = {};
+      if (title) {
+        query.title = { $regex: title, $options: "i" };
+      }
+      if (category) {
+        query.category = { $regex: category, $options: "i" };
+      }
+      if (brand) {
+        query.brand = brand;
+      }
+      const sortOption = sort ==="asc"? 1:-1
+      const products = await productCollection.find(query).sort({price: sortOption}).toArray()
+      res.send(products)
     });
 
     // Send a ping to confirm a successful connection
