@@ -6,8 +6,8 @@ const app = express();
 const port = process.env.PORT || 4001;
 
 // middleware
-
-app.use(cors({ origin: "http://localhost:5173", optionsSuccessStatus: 200 }));
+app.use(cors({origin:"http://localhost:5173",optionsSuccessStatus:200}))
+// app.use(cors({ origin: "", optionsSuccessStatus: 200 }));
 app.use(express.json());
 
 // token verification
@@ -25,7 +25,7 @@ const verifyJWT = (req, res, next) => {
       req.decoded = decoded;
       next();
     })
-    .then((res) => {});
+  
 };
 
 // verify seller
@@ -95,14 +95,18 @@ async function run() {
         query.title = { $regex: title, $options: "i" };
       }
       if (category) {
-        query.category = { $regex: category, $options: "i" };
+        query.category = category
       }
       if (brand) {
         query.brand = brand;
       }
       const sortOption = sort ==="asc"? 1:-1
       const products = await productCollection.find(query).sort({price: sortOption}).toArray()
-      res.send(products)
+      const totalProducts = await productCollection.countDocuments(query)
+      const productInfo = await productCollection.find({},{projection:{category:1,brand:1}}).toArray();
+      const brands = [...new Set(productInfo.map(brand=>brand.brand))]
+      const categorys = [...new Set(productInfo.map(category=>category.category))]
+      res.send({products,brands,categorys,totalProducts})
     });
 
     // Send a ping to confirm a successful connection
