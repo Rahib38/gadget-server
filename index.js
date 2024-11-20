@@ -6,7 +6,7 @@ const app = express();
 const port = process.env.PORT || 4001;
 
 // middleware
-app.use(cors({origin:"http://localhost:5173",optionsSuccessStatus:200}))
+app.use(cors({ origin: "http://localhost:5173", optionsSuccessStatus: 200 }));
 // app.use(cors({ origin: "", optionsSuccessStatus: 200 }));
 app.use(express.json());
 
@@ -17,15 +17,13 @@ const verifyJWT = (req, res, next) => {
     return res.send({ message: "no token" });
   }
   const token = authorization.split(" ")[1];
-  jwt
-    .verify(token, process.env.ACCESS_KEY_TOKEN, (err, decoded) => {
-      if (err) {
-        return res.send({ message: "Invalid Token" });
-      }
-      req.decoded = decoded;
-      next();
-    })
-  
+  jwt.verify(token, process.env.ACCESS_KEY_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.send({ message: "Invalid Token" });
+    }
+    req.decoded = decoded;
+    next();
+  });
 };
 
 // verify seller
@@ -89,24 +87,36 @@ async function run() {
     });
 
     app.get("/all-products", async (req, res) => {
-      const { title, sort, category, brand } = req.query;
+      const { title, sort, category, brand, page = 1, limit = 9 } = req.query;
       const query = {};
+      console.log(category)
       if (title) {
         query.title = { $regex: title, $options: "i" };
       }
       if (category) {
-        query.category = category
+        query.category = { $regex: category, $options: "i" };
+        
       }
       if (brand) {
         query.brand = brand;
       }
-      const sortOption = sort ==="asc"? 1:-1
-      const products = await productCollection.find(query).sort({price: sortOption}).toArray()
-      const totalProducts = await productCollection.countDocuments(query)
-      const productInfo = await productCollection.find({},{projection:{category:1,brand:1}}).toArray();
-      const brands = [...new Set(productInfo.map(brand=>brand.brand))]
-      const categorys = [...new Set(productInfo.map(category=>category.category))]
-      res.send({products,brands,categorys,totalProducts})
+
+      const pageNumber = Number(page);
+      const limitNumber = Number(limit);
+      const sortOption = sort === "asc" ? 1 : -1;
+      const products = await productCollection
+        .find(query)
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber)
+        .sort({ price: sortOption })
+        .toArray();
+      const totalProducts = await productCollection.countDocuments(query);
+
+      const brands = [...new Set(products.map((brand) => brand.brand))];
+      const categorys = [
+        ...new Set(products.map((category) => category.category)),
+      ];
+      res.send({ products, brands, categorys, totalProducts });
     });
 
     // Send a ping to confirm a successful connection
