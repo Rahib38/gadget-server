@@ -40,7 +40,7 @@ const verifySeller = async (req, res, next) => {
 
 // mongodb
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.gfwsklw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -89,13 +89,12 @@ async function run() {
     app.get("/all-products", async (req, res) => {
       const { title, sort, category, brand, page = 1, limit = 9 } = req.query;
       const query = {};
-      console.log(category)
+      console.log(category);
       if (title) {
         query.title = { $regex: title, $options: "i" };
       }
       if (category) {
         query.category = { $regex: category, $options: "i" };
-        
       }
       if (brand) {
         query.brand = brand;
@@ -117,6 +116,15 @@ async function run() {
         ...new Set(products.map((category) => category.category)),
       ];
       res.send({ products, brands, categorys, totalProducts });
+    });
+
+    app.patch("/wishlist/add", async (req, res) => {
+      const { userEmail, productId } = req.body;
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        { $addToSet: { wishlist: new ObjectId(String(productId)) } }
+      );
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
